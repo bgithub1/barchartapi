@@ -6,20 +6,26 @@ implement the barchart python api: https://www.barchart.com/ondemand/api/getHist
 '''
 import ondemand
 import pandas as pd
-import pandas_summary as pds
 import datetime
-import argparse as ap
+import numpy as np
 
 class BcHist():
+    codes = {1:'F',2:'G',3:'H',4:'J',5:'K',6:'M',7:'N',8:'Q',9:'U',10:'V',11:'X',12:'Z'}
+    endpoints = {
+                 'free_url':'https://marketdata.websol.barchart.com/',
+                 'paid_url':'http://ondemand.websol.barchart.com/'}
+    
     def __init__(self,
                  api_key,
                  bar_type='minutes',
-                 interval= 1):
+                 interval= 1,
+                 endpoint_type=None):
         self.api_key = api_key
         self.bar_type = bar_type
         self.interval = interval
         self.bars_per_day = 60*24 if bar_type != 'daily'  else 1 
-        self.od =  ondemand.OnDemandClient(api_key=api_key, end_point='https://marketdata.websol.barchart.com/')
+        endpoint_to_use = BcHist.endpoint_type['paid_url'] if endpoint_type is None else BcHist.endpoints[endpoint_type]
+        self.od =  ondemand.OnDemandClient(api_key=api_key, end_point=endpoint_to_use)
 
     
     def get_history(self,short_name,beg_yyyymmdd=None,end_yyyymmdd=None):
@@ -32,7 +38,54 @@ class BcHist():
         results = resp['results']
         df = pd.DataFrame(results) 
         return (status,df)  
-   
+
+    def get_contract_short_names(self,commodity,beg_yyyymm,end_yyyymm):
+        # define commodity month code list
+        
+        # get beg and end yy and mm
+        beg_yy = int(str(beg_yyyymm)[2:4])
+        beg_mm = int(str(beg_yyyymm)[4:6])
+        end_yy = int(str(end_yyyymm)[2:4])
+        end_mm = int(str(end_yyyymm)[4:6])
+        yys = np.linspace(beg_yy,end_yy,end_yy-beg_yy + 1) 
+        curr_mm = beg_mm
+        contracts = []
+        yyyymms = []
+        for yy in yys:
+            #Step 1: create months for this year
+            end_month = 12 if yy<end_yy else end_mm
+            months = np.linspace(curr_mm, end_month, end_month - curr_mm + 1)
+            
+            #Step 2: create yyyymm's for thisyear
+            these_yyyymms = ['%04d%02d' %(yy+2000,i) for i in months]
+            yyyymms.extend(these_yyyymms)
+
+            #Step 3: create contracts for this year
+            month_codes = [BcHist.codes[i] for i in months]
+            these_mcmms = ['%s%02d' %(m,yy) for m in month_codes]
+            these_contracts = ['%s%s' %(commodity,mcmm) for mcmm in these_mcmms]
+            contracts.extend(these_contracts)
+            
+            # reset current month to 1
+            curr_mm = 1
+        df = pd.DataFrame({'yyyymm':yyyymms,'contract':contracts})
+        return df
+
+    def get_futures_last_day_yyyymmdd(self,contract):
+        code_to_month = {BcHist.codes[num]:num for num in BcHist.codes.keys()} 
+        month_code = contract[-3:][0]
+        month_num = code_to_month[month_code]
+        y = int(contract[-2:]) + 2000
+        # subtract 1 from month num
+        if month_num==1:
+            month_num=12
+            y -= 1
+        else:
+            month_num -= 1
+        return int('%04d%02d%02d' %(y,month_num,28))
+        
+    
+    
 def calc_dates(beg_yyyymmdd=None,end_yyyymmdd=None,
                      bar_type='minutes',interval=1):
     if beg_yyyymmdd is not None:            
@@ -70,30 +123,3 @@ def calc_dates(beg_yyyymmdd=None,end_yyyymmdd=None,
     e_yyyymmdd = '%04d%02d%02d' %(dt_end.year,dt_end.month,dt_end.day)
     return {'max_records':max_records,'beg_yyyymmdd':b_yyyymmdd,'end_yyyymmdd':e_yyyymmdd}
          
-if __name__ == '__main__':
-    parser = ap.ArgumentParser()
-    parser.add_argument('--api_key',type=str,help='barchart API KEY')
-    parser.add_argument('--bar_type',type=str,help='either daily or minutes (default is minutes)',
-                        default='minutes')
-    parser.add_argument('--interval',type=int,help='if bar_type = minutes, then either 1,5,15,30 or 60. (default = 1)',
-                        default=1)
-    parser.add_argument('--short_name',type=str,help='a stock name like AAPL, or a commodities contract like CLF19 (NO DEFAULT')
-    parser.add_argument('--beg_yyyymmdd',type=int,
-                        help='a YYYYMMDD date like 20181101 for Nov 1st, 2018.  This will be the date of the first history bar that you get.  If none, the date is calculated as the last 2 months of a commodities contracts, or 2 months back from today for a stock',
-                        nargs='?')
-    parser.add_argument('--end_yyyymmdd',type=int,
-                        help='a YYYYMMDD date like 20181214 for Dec 14th, 2018.  This will be the date of the last history bar that you getIf none, the date is calculated as the last 2 months of a commodities contracts, or 2 months back from today for a stock',
-                        nargs='?')
-    args = parser.parse_args()
-    api_key = args.api_key # '99125d367af268ca234144d64583a5e7'
-    
-    bar_type = args.bar_type
-    interval = args.interval
-    short_name = args.short_name
-    beg_yyyymmdd = args.beg_yyyymmdd
-    end_yyyymmdd = args.end_yyyymmdd
-    bch = BcHist(api_key, bar_type=bar_type, interval=interval)
-    tup = bch.get_history('CLG19', beg_yyyymmdd, end_yyyymmdd)
-    print(tup[0])
-    print(tup[1])
-            
