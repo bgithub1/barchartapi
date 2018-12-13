@@ -1,0 +1,6 @@
+*.log
+_apiticket.txt
+logfile
+fnames.csv
+temp*.csv
+*.pyc
