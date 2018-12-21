@@ -108,15 +108,19 @@ class FuturesSeries():
         self.end_yyyymm = int(str(end_yyyymmdd)[0:6])        
     
     
-    def get_contracts(self,trading_days_to_get=40,contract_month_list=None):
+    def get_contracts(self,trading_days_to_get=40,month_code_list=None):
         '''
         Get data from Barchart, and add extra informative columns
         :param trading_days_to_get:
         '''
+        # STEP 1: get list of contracts and their yyyy and mm
         self.df_final = None
         df_contracts = self.bch.get_contract_short_names(self.commodity, self.beg_yyyymm, self.end_yyyymm)
-        
-        # STEP 4: loop to get data
+        if month_code_list is not None:
+            df_contracts['month_code'] = df_contracts.contract.apply(lambda c: c[-3:][0])
+            df_contracts = df_contracts[df_contracts.month_code.isin(month_code_list)]
+
+        # STEP 2: loop to get data
         for i in tqdm(range(len(df_contracts))):   
             row = df_contracts.iloc[i]
             contract_last_day_yyyymmdd = self.bch.get_last_trading_day(row.contract)
@@ -131,13 +135,13 @@ class FuturesSeries():
                 else:
                     self.df_final = self.df_final.append(df)
         
-        # add informative columns
-        self.df_final = proc_df(self.df_final)
+#         # STEP 3: add informative columns
+#         self.df_final = proc_df(self.df_final)
     
     def write_csv(self,output_folder):
         self.df_final.to_csv('%s/%s_%06d_%06d.csv' %(output_folder,self.commodity,self.beg_yyyymm,self.end_yyyymm),index=False)
 
-def proc_df(df):
+def proc_df(df,is_commodity=True):
     '''
     Add important columns to Barchart csv data
     :param df:
@@ -156,13 +160,17 @@ def proc_df(df):
     df['hour'] = fhour
     df['minute'] = fminute        
 
-    month_nums = {'F':1,'G':2,'H':3,'J':4,'K':5,'M':6,'N':7,'Q':8,'U':9,'V':10,'X':11,'Z':12}
-    syms = df['symbol'].as_matrix()
-    cmon = [int(month_nums[s[-3:][0]]) for s in syms]
-    cyear =  [int(s[-2:]) + 2000 for s in syms]
-    df['cyear'] = cyear
-    df['cmonth'] = cmon
-
+    if is_commodity:
+        month_nums = {'F':1,'G':2,'H':3,'J':4,'K':5,'M':6,'N':7,'Q':8,'U':9,'V':10,'X':11,'Z':12}
+        syms = df['symbol'].as_matrix()
+        cmon = [int(month_nums[s[-3:][0]]) for s in syms]
+        cyear =  [int(s[-2:]) + 2000 for s in syms]
+        df['cyear'] = cyear
+        df['cmonth'] = cmon
+    else:
+        df['cyear'] = df['year']
+        df['cmonth'] = df['month']
+        
     tds = df['tradingDay'].as_matrix()
     fyear = [int(s[0:4]) for s in tds]
     fmon =  [int(s[5:7]) for s in tds]
