@@ -56,5 +56,41 @@ df_history = tup[1]
 df_history.head(20)
 ```
 
+## Get Futures Data for a series of contracts
+(See the jupyter notebook futures_series.ipynb)
+
+#### Import futures_series
+```
+# make sure you have executed the previous exports and 
+#   added the previous folders to sys.path
+import futures_series as futs
+```
+
+#### Define date and bar type parameters
+```
+bar_type = 'minutes'
+interval = 1
+output_folder = temp_folder
+logger = futs.init_root_logger('logger.log')
+start_year = 2008
+end_year = 2018
+years = np.linspace(start_year,end_year,end_year-start_year+1,dtype=int)
+days = 40
+```
+
+#### Create a loop that uses instances of the class FuturesSeries
+```
+for y in years:
+    beg_yyyymm = int(f'{y}01')
+    end_yyyymm = int(f'{y}12')
+    logger.info(f'begin:{beg_yyyymm}, end:{end_yyyymm}')
+    fc = futs.FuturesSeries(api_key, commodity, beg_yyyymm, end_yyyymm, bar_type, 
+                            interval, endpoint_type,logger)
+    logger.info(f'BEGIN Fetching Data for year: {y}')
+    fc.get_contracts(trading_days_to_get=days,month_code_list=month_codes)
+    logger.info(f'BEGIN Writing Data for year: {y}')
+    fc.write_csv(output_folder)
+    logger.info(f'END Writing Data for year: {y}')
+```
 
 
