@@ -1,20 +1,29 @@
-## barchartapi
+## barchartapi facilitates python access to Barchart's paid API (https://www.barchart.com/ondemand/api)
+*The following examples  assume that you have launched a jupyter notebook or a python module from the folder YOUR_WORKSPACE/barchartapi/barchartapi*
 
-barchartapi facilitates python access to Barchart's paid API (https://www.barchart.com/ondemand/api)
 
-### Use:
-#### Stocks and other non futures:
-(The ipynb jupyter notebook give examples of using the module barchart_api in project barchartapi and the package barchartapi.)
+## Structure:
+* **project name**: *barchartapi*
+* **main package**: *barchartapi/barchartapi*
+* **main module**: *barchartapi/barchartapi/barchart_api.py*
+* **main class**: *barchartapi/barchartapi/barchart_api.BcHist*
 
-Example: get one minute bars for SPY  
-#### import pandas and sys
-```
+.
+.
+
  
+## For stocks and other non futures:  
+(See jupyter notebook **get_history_stocks.ipynb** )
+
+### Example: get one minute bars for SPY  
+
+##### import pandas and sys  
+```
 import pandas as pd
 import sys
 ```
 
-#### add references that barchartapi uses to your sys.path
+##### add references that barchartapi uses to your sys.path
 ```
 WORKSPACE_DIR = '../..' 
 PROJECT_DIR = f'{WORKSPACE_DIR}/barchartapi' 
@@ -28,7 +37,7 @@ if WORKSPACE_DIR not in sys.path:
 import barchart_api as bcapi
 ```
 
-#### Create an instance of BsHist
+##### Create an instance of BsHist
 ```
 api_key = "YOUR_FREE_OR_PAID_API_KEY"
 bar_type='minutes'
