@@ -1,17 +1,15 @@
 ## barchartapi facilitates python access to Barchart's paid API (https://www.barchart.com/ondemand/api)
 *The following examples  assume that you have launched a jupyter notebook or a python module from the folder YOUR_WORKSPACE/barchartapi/barchartapi*
 
-
+___
 ## Structure:
 * **project name**: *barchartapi*
 * **main package**: *barchartapi/barchartapi*
 * **main module**: *barchartapi/barchartapi/barchart_api.py*
 * **main class**: *barchartapi/barchartapi/barchart_api.BcHist*
 
-.
-.
 
- 
+___ 
 ## For stocks and other non futures:  
 (See jupyter notebook **get_history_stocks.ipynb** )
 
@@ -56,6 +54,7 @@ df_history = tup[1]
 df_history.head(20)
 ```
 
+___
 ## Get Futures Data for a series of contracts
 (See the jupyter notebook futures_series.ipynb)
 
