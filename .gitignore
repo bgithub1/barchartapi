@@ -4,3 +4,4 @@ logfile
 fnames.csv
 temp*.csv
 *.pyc
+.ipynb_checkpoints
