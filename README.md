@@ -17,13 +17,13 @@
 
 ### Example: get one minute bars for SPY  
 
-##### import pandas and sys  
+##### Import pandas and sys  
 ```
 import pandas as pd
 import sys
 ```
 
-##### add references that barchartapi uses to your sys.path
+##### Add references to your sys.path, that barchartapi uses
 ```
 WORKSPACE_DIR = '../..' 
 PROJECT_DIR = f'{WORKSPACE_DIR}/barchartapi' 
