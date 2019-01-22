@@ -2,7 +2,7 @@
 Created on Dec 12, 2018
 
 implement the barchart python api: https://www.barchart.com/ondemand/api/getHistory
-@author: bperlman1
+@author: Bill Perlman
 '''
 import ondemand
 import pandas as pd

@@ -12,7 +12,7 @@ python get_contract_series_history.py /
  --beg_yyyymm 201001 /
  --end_yyyymm 201812 
 
-@author: bperlman1
+@author: Bill Perlman
 '''
 
 import math

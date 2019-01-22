@@ -1,7 +1,7 @@
 '''
 Created on Dec 13, 2018
 
-@author: bperlman1
+@author: Bill Perlman
 '''
 from barchartapi import barchart_api as bcapi
 import argparse as ap
