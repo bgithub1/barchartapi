@@ -97,6 +97,8 @@ class BcHist():
                           startDate=yyyymmdd)
         
         results = resp['results']
+        if results is None:
+            raise ValueError(resp['status'])
         df = pd.DataFrame(results) 
         last_row = df.iloc[len(df)-1]
         return int(last_row.tradingDay.replace('-',''))
@@ -141,8 +143,13 @@ def calc_dates(beg_yyyymmdd=None,end_yyyymmdd=None,
 
 
 if __name__=='__main__':
-    api_key = open('temp_folder/paid_api_key.txt','r').read()
-    bc = BcHist(api_key, 'daily', 1, 'paid_url')
-    print(bc.get_last_trading_day('CLM10'))
+    api_key = open('temp_folder/free_api_key.txt','r').read()
+    bc = BcHist(api_key, 'daily', 1, 'free_url')
+    t = datetime.datetime.now() - datetime.timedelta(30)
+    y = t.year - 2000
+    m = t.month
+    mcode = BcHist.codes[m]
+    contract = 'CL%s%02d' %(mcode,y)
+    print('last trading day (based on history) for %s = %d' %(contract,bc.get_last_trading_day(contract)))
     pass
              
