@@ -33,7 +33,7 @@ class BcHist():
         self.bar_type = bar_type
         self.interval = interval
         self.bars_per_day = 60*24 if bar_type != 'daily'  else 1 
-        endpoint_to_use = BcHist.endpoint_type['paid_url'] if endpoint_type is None else BcHist.endpoints[endpoint_type]
+        endpoint_to_use = BcHist.endpoints['paid_url'] if endpoint_type is None else BcHist.endpoints[endpoint_type]
         self.od =  ondemand.OnDemandClient(api_key=api_key, end_point=endpoint_to_use)
 
     
