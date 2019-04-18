@@ -5,6 +5,10 @@ import datetime
 import pandas_datareader.data as pdr
 
 import matplotlib.pyplot as plt
+from matplotlib.collections import PatchCollection
+from matplotlib import gridspec
+import matplotlib.patches as patches
+
 import plotly.graph_objs as go
 # from plotly.offline import download_plotlyjs, init_notebook_mode, plot, iplot
 from plotly.offline import iplot
@@ -201,3 +205,115 @@ def plotly_pandas(df_in,x_column,num_of_x_ticks=20,bar_plot=False,figsize=(16,10
     fig = go.Figure(data=[d1],layout=layout)
     return fig   
 
+
+def candles(df,title=None,open_column='open',high_column='high',low_column='low',close_column='close',volume_column='volume',
+            date_column='timestamp',num_of_x_ticks=20,bar_width=.5,
+           min_volume=None,max_volume=None,figsize=None,date_offset_to_show=(11,16)):
+    def __full_date(d):
+        year = int(str(d)[0:4])
+        month = int(str(d)[5:7])
+        day = int(str(d)[8:10])
+        hour = int(str(d)[11:13])
+        minute = int(str(d)[14:16])
+        dt = datetime.datetime(year,month,day,hour,minute)
+        return(dt)
+    
+    # Step 1: create fig and axises
+    # force the "non-body" lines of the candlestick to be drawn from the middle of the candlestick body
+    line_offset = bar_width/2
+    
+    fs = (15,8) if figsize is None else figsize
+    # create a "gridspec" dictionary that determines the relative size of the candlestick chart vs the volume chart
+    gs_kw = dict(width_ratios=[1], height_ratios=[1,.3])
+    # create the figure and the 2 axis so that you can "subplot" the candlesticks and the volume bars separately.
+    fig,axs = plt.subplots(2,1,figsize=fs, gridspec_kw=gs_kw)
+    
+    # Step 2: build dataframe to plot
+    df_2 = df.copy()
+    # add a very small amout th the close, so that the close - open will not be zero
+    df_2[close_column] = df_2[close_column]+.0001
+    # create a date column of datetime objects
+    df_2['date'] = df_2[date_column].apply(__full_date)
+    # make the index a range of integers
+    df_2.index = list(range(len(df_2)))
+    # get the absolute high's and low's for both the x and y axis of the candlestick graph for this day
+    ymin = df_2[low_column].min()
+    ymax = df_2[high_column].max() #ymin + largest_height
+    xmin = df_2.index.min()
+    xmax = df_2.index.max()
+    # set the x and y limits to the candlestick graph
+    axs[0].set_xlim(xmin,xmax)
+    axs[0].set_ylim(ymin-1,ymax+1)
+    axs[0].set_title(f'{"Candle Chart" if title is None else title}')    
+
+    # Step 3: create rectangles to display all "green body UP day" candlesticks, where the close is >= the open
+    df_3 = df_2[df_2[close_column]>=df_2.open][[open_column,close_column,high_column,low_column]]
+    # You create a candlestick by creating a Rectangle object.
+    x_left_edge = np.array(df_3.index)
+    y_left_edge = np.array(df_3[open_column])
+    y_bottom_line_min = np.array(df_3[low_column])
+    y_bottom_line_max = y_left_edge
+    y_top_line_min = np.array(df_3[close_column])
+    y_top_line_max = np.array(df_3[high_column])
+    heights = np.array(df_3[close_column] - df_3[open_column])
+
+    # Step 3.2 create a rectangle for the candlestick body of each "up" day 
+    for i in range(len(df_3)):
+        xle = x_left_edge[i]
+        yle = y_left_edge[i]
+        h = heights[i]
+        r = patches.Rectangle([xle,yle],bar_width,h,linewidth=1,color='g')
+        r.set_fill(True)
+        axs[0].add_patch(r)
+    # Now create the verticle lines that run from the top and bottom of the candlestick body
+    axs[0].vlines(x_left_edge+line_offset, y_bottom_line_min, y_bottom_line_max,colors=['m' for _ in range(len(x_left_edge))])
+    axs[0].vlines(x_left_edge+line_offset, y_top_line_min, y_top_line_max,colors=['m' for _ in range(len(x_left_edge))])
+
+    # Step 4: create rectangles to display all "red body DOWN day" candlesticks, where the close is < the open
+    df_3 = df_2[df_2[close_column]<df_2.open][[open_column,close_column,high_column,low_column]]
+    x_left_edge = np.array(df_3.index)
+    y_left_edge = np.array(df_3[close_column])
+    y_bottom_line_min = np.array(df_3[low_column])
+    y_bottom_line_max = y_left_edge
+    y_top_line_min = np.array(df_3[open_column])
+    y_top_line_max = np.array(df_3[high_column])
+    heights = np.array(df_3.open-df_3[close_column])
+    for i in range(len(df_3)):
+        xle = x_left_edge[i]
+        yle = y_left_edge[i]
+        h = heights[i]
+        r = patches.Rectangle([xle,yle],bar_width,h,linewidth=1,color='r')
+        axs[0].add_patch(r)
+    # Now create the verticle lines that run from the top and bottom of the candlestick body
+    axs[0].vlines(x_left_edge+line_offset, y_bottom_line_min, y_bottom_line_max,colors=['m' for _ in range(len(x_left_edge))])
+    axs[0].vlines(x_left_edge+line_offset, y_top_line_min, y_top_line_max,colors=['m' for _ in range(len(x_left_edge))])
+
+        
+    # Step 3: Create the volume plot using rectangle objects
+    x_left_edge = np.array(df_2.index)
+    heights = np.array(df_2[volume_column])
+    for i in range(len(df_2)):
+        xle = x_left_edge[i]
+        yle = 0
+        h = heights[i]
+        r = patches.Rectangle([xle,0],bar_width,h,linewidth=1,color='b')
+        axs[1].add_patch(r)
+    
+    # set y axis scale for the volume graph
+    minv = df_2[volume_column].min() if min_volume is None else min_volume
+    maxv = df_2[volume_column].max() if max_volume is None else max_volume
+    axs[1].set_ylim(minv,maxv)
+    
+    # Step 4: Create the x-axis values that will be displayed on the graph
+    x = list(range(len(df_2)))
+    n = len(x)
+    s = num_of_x_ticks
+    x_indices = x[::n//s][::-1]
+    x_labels = [str(t)[date_offset_to_show[0]:date_offset_to_show[1]] for t in list(df_2.iloc[x_indices][date_column])]
+    axs[0].set_xticks(x_indices)
+    axs[0].set_xticklabels(x_labels, rotation=90)
+    axs[0].grid()
+    axs[1].set_xticks(x_indices)
+    axs[1].set_xticklabels(x_labels, rotation=90)
+    axs[1].grid() 
+    return fig, axs
