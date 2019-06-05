@@ -15,14 +15,6 @@ from plotly.offline import iplot
 import plotly.tools as tls
 import pandasql as psql
 import importlib
-import barchart_api as bcapi
-
-
-api_key = open(f'./temp_folder/free_api_key.txt','r').read()
-endpoint_type=f'free_url'
-bch_30 = bcapi.BcHist(api_key, bar_type='minutes', interval=30,endpoint_type = endpoint_type)
-bch_day = bcapi.BcHist(api_key, bar_type='daily', interval=1,endpoint_type = endpoint_type)
-
 
 def str_to_yyyymmdd(d,sep='-'):
     try:
@@ -47,6 +39,7 @@ def fetch_history(symbol,dt_beg,dt_end):
     df = df.sort_values('date')
     df.index = list(range(len(df)))
     # make adj close the close
+    df['unadj_close'] = df.Close
     df['Close'] = df['Adj Close']
     df = df.drop(['Adj Close'],axis=1)
     cols = df.columns.values 
@@ -54,55 +47,7 @@ def fetch_history(symbol,dt_beg,dt_end):
     df = df.rename(columns = cols_dict)
     df['trade_date'] = df.date.apply(str_to_yyyymmdd)
     return df
-
-def get_yahoo(short_name,days_to_fetch = 365):
-    dt_end = datetime.datetime.now()
-    dt_beg = dt_end - datetime.timedelta(days_to_fetch)
-    beg_yyyymmdd = '%04d%02d%02d' %(dt_beg.year,dt_beg.month,dt_beg.day)#20181201
-    end_yyyymmdd = '%04d%02d%02d' %(dt_end.year,dt_end.month,dt_end.day)#20190219
-
-    print(f'get_history: {short_name} FETCHING DATA {datetime.datetime.now()}')
-    df_hist = fetch_history(short_name, beg_yyyymmdd, end_yyyymmdd)
-    return df_hist
-
-
-def get_barchart(short_name,bch=bch_30,days_to_fetch = 120):
-    dt_end = datetime.datetime.now()
-    dt_beg = dt_end - datetime.timedelta(days_to_fetch)
-    beg_yyyymmdd = '%04d%02d%02d' %(dt_beg.year,dt_beg.month,dt_beg.day)#20181201
-    end_yyyymmdd = '%04d%02d%02d' %(dt_end.year,dt_end.month,dt_end.day)#20190219
-
-    print(f'get_history: {short_name} FETCHING DATA {datetime.datetime.now()}')
-    tup = bch.get_history(short_name, beg_yyyymmdd, end_yyyymmdd)
-    df_hist = tup[1]
-    def __full_date(d):
-        year = int(str(d)[0:4])
-        month = int(str(d)[5:7])
-        day = int(str(d)[8:10])
-        hour = int(str(d)[11:13])
-        minute = int(str(d)[14:16])
-        dt = datetime.datetime(year,month,day,hour,minute)
-        return(dt)
-
-    df_hist['date'] = df_hist.timestamp.apply(__full_date)
-    return df_hist
-
-def add_ymdhm(df_in,date_column):
-    df = df_in.copy()
-    date_example_type = type(df.iloc[0].date)
-    df['dstring'] = df[date_column].apply(lambda d:str(d))
-    if len(str(df.iloc[0].dstring))<=8:
-        df['year'] = df.dstring.str[0:4].astype(int)
-        df['month'] = df.dstring.str[4:6].astype(int)
-        df['day'] = df.dstring.str[6:8].astype(int)
-    else:
-        df['year'] = df.dstring.str[0:4].astype(int)
-        df['month'] = df.dstring.str[5:7].astype(int)
-        df['day'] = df.dstring.str[8:10].astype(int)
-        if len(str(df.iloc[0].dstring))>10:
-            df['hour'] = df.dstring.str[11:13].astype(int)
-            df['minute'] = df.dstring.str[14:16].astype(int)
-    return df
+    
 
 def psql_merge(df1_name,col1_low,col1_high,df2_name,col2_low,col2_high):
     q = f"""select * from {df1_name}
@@ -127,7 +72,8 @@ def plot_pandas(df_in,x_column,num_of_x_ticks=20,bar_plot=False,figsize=(16,10))
     x = list(range(len(df_cl)))
     n = len(x)
     s = num_of_x_ticks
-    x_indices = x[::n//s][::-1]
+    k = n//s*s
+    x_indices = x[::-1][:k][::k//s][::-1]
     x_labels = [str(t) for t in list(df_cl.iloc[x_indices][x_column])]
     ycols = list(filter(lambda c: c!=x_column,df_cl.columns.values))
     all_cols = [x_column] + ycols
@@ -235,84 +181,31 @@ def create_df_random():
 def reload_module(module_name):
     importlib.reload(module_name)
 
-# def plotly_pandas(df_in,x_column,num_of_x_ticks=20,bar_plot=False,figsize=(16,10)):    
-#     plotly_fig = tls.mpl_to_plotly(plot_pandas(
-#         df_in,
-#         x_column=x_column,
-#         num_of_x_ticks=num_of_x_ticks,
-#         bar_plot=bar_plot,
-#         figsize=figsize).get_figure())
-#     d1 = plotly_fig['data'][0]
-    
-#     number_of_ticks_display=num_of_x_ticks
-#     td = list(df_in[x_column]) 
-#     spacing = len(td)//number_of_ticks_display
-#     tdvals = td[::spacing]
-#     d1.x = td
-#     layout = go.Layout(
-#         xaxis=dict(
-#             ticktext=tdvals,
-#             tickvals=tdvals,
-#             tickangle=90,
-#             type='category'
-#         )
-#     )
-#     fig = go.Figure(data=[d1],layout=layout)
-#     return fig   
-
-def plotly_pandas(df_in,x_column,num_of_x_ticks=20,plot_title=None,
-                  y_left_label=None,y_right_label=None,bar_plot=False,figsize=(16,10)):    
-    f = plot_pandas(df_in,x_column=x_column,bar_plot=False)#.get_figure()
-    # list(filter(lambda s: 'get_y' in s,dir(f)))
-    plotly_fig = tls.mpl_to_plotly(f.get_figure())
+def plotly_pandas(df_in,x_column,num_of_x_ticks=20,bar_plot=False,figsize=(16,10)):    
+    plotly_fig = tls.mpl_to_plotly(plot_pandas(
+        df_in,
+        x_column=x_column,
+        num_of_x_ticks=num_of_x_ticks,
+        bar_plot=bar_plot,
+        figsize=figsize).get_figure())
     d1 = plotly_fig['data'][0]
-    number_of_ticks_display=20
+    
+    number_of_ticks_display=num_of_x_ticks
     td = list(df_in[x_column]) 
     spacing = len(td)//number_of_ticks_display
     tdvals = td[::spacing]
     d1.x = td
-    d_array = [d1]
-    if len(plotly_fig['data'])>1:
-        d2 = plotly_fig['data'][1]
-        d2.x = td
-        d2.xaxis = 'x'
-        d_array.append(d2)
-
     layout = go.Layout(
-        title='plotly' if plot_title is None else plot_title,
         xaxis=dict(
             ticktext=tdvals,
             tickvals=tdvals,
             tickangle=90,
-            type='category'),
-        yaxis=dict(
-            title='y main' if y_left_label is None else y_left_label
-        ),
-    )
-    if len(d_array)>1:
-        layout = go.Layout(
-            title='plotly' if plot_title is None else plot_title,
-            xaxis=dict(
-                ticktext=tdvals,
-                tickvals=tdvals,
-                tickangle=90,
-                type='category'),
-            xaxis2=dict(
-                ticktext=tdvals,
-                tickvals=tdvals,
-                tickangle=90,
-                type='category'),
-            yaxis=dict(
-                title='y main' if y_left_label is None else y_left_label
-            ),
-            yaxis2=dict(
-                title='y alt' if y_right_label is None else y_right_label,
-                overlaying='y',
-                side='right')
+            type='category'
         )
+    )
+    fig = go.Figure(data=[d1],layout=layout)
+    return fig   
 
-    fig = go.Figure(data=d_array,layout=layout)
-    return fig
 
 def candles(df,title=None,open_column='open',high_column='high',low_column='low',close_column='close',volume_column='volume',
             date_column='timestamp',num_of_x_ticks=20,bar_width=.5,
@@ -334,14 +227,12 @@ def candles(df,title=None,open_column='open',high_column='high',low_column='low'
     # create a "gridspec" dictionary that determines the relative size of the candlestick chart vs the volume chart
     gs_kw = dict(width_ratios=[1], height_ratios=[1,.3])
     # create the figure and the 2 axis so that you can "subplot" the candlesticks and the volume bars separately.
-
+    fig,axs = plt.subplots(2,1,figsize=fs, gridspec_kw=gs_kw)
     
-    fig,axs = plt.subplots(2,1,figsize=fs, gridspec_kw=gs_kw, sharex=True)
-    fig.subplots_adjust(hspace=0)
     # Step 2: build dataframe to plot
     df_2 = df.copy()
     # add a very small amout th the close, so that the close - open will not be zero
-    df_2[close_column] = df_2[close_column]+.00001
+    df_2[close_column] = df_2[close_column]+.0001
     # create a date column of datetime objects
     df_2['date'] = df_2[date_column].apply(__full_date)
     # make the index a range of integers
@@ -353,7 +244,7 @@ def candles(df,title=None,open_column='open',high_column='high',low_column='low'
     xmax = df_2.index.max()
     # set the x and y limits to the candlestick graph
     axs[0].set_xlim(xmin,xmax)
-    axs[0].set_ylim(ymin,ymax)
+    axs[0].set_ylim(ymin-1,ymax+1)
     axs[0].set_title(f'{"Candle Chart" if title is None else title}')    
 
     # Step 3: create rectangles to display all "green body UP day" candlesticks, where the close is >= the open
