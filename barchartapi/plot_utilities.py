@@ -115,13 +115,15 @@ def psql_merge(df1_name,col1_low,col1_high,df2_name,col2_low,col2_high):
 
 
 
-def plot_pandas(df_in,x_column,num_of_x_ticks=20,bar_plot=False,figsize=(16,10)):
+def plot_pandas(df_in,x_column,num_of_x_ticks=20,bar_plot=False,figsize=(16,10),
+               alt_yaxis=True):
     '''
+    Helper method to plot time series from Pandas DataFrames.
     '''
     df_cl = df_in.copy()
     df_cl.index = list(range(len(df_cl)))
     df_cl = df_cl.drop_duplicates()
-    xs = list(df_cl[x_column])
+#     xs = list(df_cl[x_column])
     df_cl[x_column] = df_cl[x_column].apply(lambda i:str(i))
 
     x = list(range(len(df_cl)))
@@ -130,14 +132,14 @@ def plot_pandas(df_in,x_column,num_of_x_ticks=20,bar_plot=False,figsize=(16,10))
     x_indices = x[::n//s][::-1]
     x_labels = [str(t) for t in list(df_cl.iloc[x_indices][x_column])]
     ycols = list(filter(lambda c: c!=x_column,df_cl.columns.values))
-    all_cols = [x_column] + ycols
+#     all_cols = [x_column] + ycols
     if bar_plot:
-        if len(ycols)>1:
+        if len(ycols)>1 and alt_yaxis:
             ax = df_cl[ycols].plot.bar(secondary_y=ycols[1:],figsize=figsize)
         else:
             ax = df_cl[ycols].plot.bar(figsize=figsize)
     else:
-        if len(ycols)>1:
+        if len(ycols)>1 and alt_yaxis:
             ax = df_cl[ycols].plot(secondary_y=ycols[1:],figsize=figsize)
         else:
             ax = df_cl[ycols].plot(figsize=figsize)
@@ -261,8 +263,10 @@ def reload_module(module_name):
 #     return fig   
 
 def plotly_pandas(df_in,x_column,num_of_x_ticks=20,plot_title=None,
-                  y_left_label=None,y_right_label=None,bar_plot=False,figsize=(16,10)):    
-    f = plot_pandas(df_in,x_column=x_column,bar_plot=False)#.get_figure()
+                  y_left_label=None,y_right_label=None,bar_plot=False,figsize=(16,10),
+                 alt_yaxis=True):    
+    f = plot_pandas(df_in,x_column=x_column,bar_plot=bar_plot,
+                    num_of_x_ticks=num_of_x_ticks,alt_yaxis=alt_yaxis)#.get_figure()
     # list(filter(lambda s: 'get_y' in s,dir(f)))
     plotly_fig = tls.mpl_to_plotly(f.get_figure())
     d1 = plotly_fig['data'][0]
@@ -277,7 +281,7 @@ def plotly_pandas(df_in,x_column,num_of_x_ticks=20,plot_title=None,
         d2.x = td
         d2.xaxis = 'x'
         d_array.append(d2)
-
+        
     layout = go.Layout(
         title='plotly' if plot_title is None else plot_title,
         xaxis=dict(
@@ -305,13 +309,18 @@ def plotly_pandas(df_in,x_column,num_of_x_ticks=20,plot_title=None,
             yaxis=dict(
                 title='y main' if y_left_label is None else y_left_label
             ),
-            yaxis2=dict(
+            yaxis2= dict(
                 title='y alt' if y_right_label is None else y_right_label,
                 overlaying='y',
                 side='right')
         )
-
     fig = go.Figure(data=d_array,layout=layout)
+
+    if bar_plot:  # fix y values, which have all become positive
+        df_yvals = df_in[[c for c in df_in.columns.values if c != x_column]]
+        for i in range(len(df_yvals.columns.values)):
+            fig.data[i].y = df_yvals[df_yvals.columns.values[i]]
+    
     return fig
 
 def candles(df,title=None,open_column='open',high_column='high',low_column='low',close_column='close',volume_column='volume',
