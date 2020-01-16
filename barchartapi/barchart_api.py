@@ -151,5 +151,10 @@ if __name__=='__main__':
     mcode = BcHist.codes[m]
     contract = 'CL%s%02d' %(mcode,y)
     print('last trading day (based on history) for %s = %d' %(contract,bc.get_last_trading_day(contract)))
-    pass
+    contract = 'CLX19'
+    print('last trading day (based on history) for %s = %d' %(contract,bc.get_last_trading_day(contract)))
+    staus,dfc = bc.get_history('CLX19', 20190801, 20191001)
+    print(dfc)
+    staus,dfs = bc.get_history('XLE', 20190801, 20191001)
+    print(dfs)
              
